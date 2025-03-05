@@ -311,7 +311,7 @@ draw_frames <- function(plot, frames, device, ref_frame, bar_increase, ...) {
     rate <- i/as.double(Sys.time() - start, units = 'secs')
     if (is.nan(rate)) rate <- 0
     rate <- format(rate, digits = 2)
-    bar_increase(i)
+    bar_increase(1)
     pb$tick(tokens = list(fps = rate))
 
     if (!stream) dev.off()
