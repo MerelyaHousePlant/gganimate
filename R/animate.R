@@ -1,4 +1,6 @@
+library(coro)
 #' Render a gganim object
+#' library(coro)
 #'
 #' This function takes a gganim object and renders it into an animation. The
 #' nature of the animation is dependent on the renderer, but defaults to using
@@ -124,7 +126,7 @@ animate.default <- function(plot, ...) {
 }
 #' @rdname animate
 #' @export
-animate.gganim <- function(plot, nframes, fps, duration, detail, renderer, device, ref_frame, start_pause, end_pause, rewind, ...) {
+animate.gganim <- function(plot, nframes, fps, duration, detail, renderer, device, ref_frame, start_pause, end_pause, rewind, bar_increase, ...) {
   args <- prepare_args(
     nframes = nframes,
     fps = fps,
@@ -170,8 +172,9 @@ animate.gganim <- function(plot, nframes, fps, duration, detail, renderer, devic
   }
 
   if (args$ref_frame < 0) args$ref_frame <- nframes_final + 1 + args$ref_frame
-
-  frames_vars <- inject(draw_frames(plot = plot, frames = frame_ind, device = args$device, ref_frame = args$ref_frame, !!!args$dev_args))
+  frames_vars <- inject(draw_frames(plot = plot, frames = frame_ind, device = args$device, ref_frame = args$ref_frame, bar_increase = bar_increase, !!!args$dev_args))
+  print('these are the frame vars')
+  print(bar_increase)
   if (args$device == 'current') return(invisible(frames_vars))
 
   if (args$start_pause != 0) frames_vars <- vec_rbind0(frames_vars[rep(1, args$start_pause), , drop = FALSE], frames_vars)
@@ -240,10 +243,12 @@ prerender <- function(plot, nframes) {
   plot <- set_nframes(plot, nframes)
   ggplot_build(plot)
 }
+
+
 # Draw each frame as an image based on a specified device
 # Returns a data.frame of frame metadata with image location in frame_source
 # column
-draw_frames <- function(plot, frames, device, ref_frame, ...) {
+draw_frames <- function(plot, frames, device, ref_frame, bar_increase, ...) {
   stream <- device == 'current'
 
   dims <- try_fetch(
@@ -292,7 +297,7 @@ draw_frames <- function(plot, frames, device, ref_frame, ...) {
   )
   start <- Sys.time()
   pb$tick(0)
-
+  bar_increase(0)
   for (i in seq_along(frames)) {
     if (!stream) inject(device(files[i], !!!args))
 
@@ -306,6 +311,7 @@ draw_frames <- function(plot, frames, device, ref_frame, ...) {
     rate <- i/as.double(Sys.time() - start, units = 'secs')
     if (is.nan(rate)) rate <- 0
     rate <- format(rate, digits = 2)
+    bar_increase(i)
     pb$tick(tokens = list(fps = rate))
 
     if (!stream) dev.off()
